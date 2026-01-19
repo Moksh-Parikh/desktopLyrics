@@ -15,7 +15,11 @@ int main(void)
     }
 
     printf("%d\n", getTrackPosition(DBusConnection, "kew"));
-    
+    SongData metadata = getTrackMetadata(DBusConnection, "kew");
+    printf("%s\n", metadata.album);
+
     g_object_unref(DBusConnection);
+    deallocateSongData(metadata);
+
     return 0;
 }

@@ -1,4 +1,4 @@
-// All 3 of these structs and loadTimedLyrics()
+// All 3 of these structs, loadTimedLyrics() and freeLyrics()
 // are taken/adapted from the kew codebase
 // https://codeberg.org/ravachol/kew
 // Credit to ravachol and the other kew contributors
@@ -20,8 +20,8 @@ typedef struct {
 } Lyrics;
 
 typedef struct {
-        char file_path[PATH_MAX];
-        char cover_art_path[PATH_MAX];
+        char filePath[PATH_MAX];
+        char coverArtPath[PATH_MAX];
         char* artist;
         char* album;
         char* title;
@@ -32,4 +32,7 @@ typedef struct {
         Lyrics *lyrics;
 } SongData;
 
+SongData initialiseSongData();
 int loadTimedLyrics(FILE *file, Lyrics *lyrics);
+void freeLyrics(Lyrics *lyrics);
+void deallocateSongData(SongData metadata);

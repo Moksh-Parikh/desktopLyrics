@@ -53,3 +53,37 @@ int loadTimedLyrics(FILE *file, Lyrics *lyrics) {
         lyrics->isTimed = 1;
         return 1;
 }
+
+SongData initialiseSongData() {
+    SongData metadata = {
+        .filePath = {0},
+        .coverArtPath = {0},
+        .artist = NULL,
+        .album = NULL,
+        .title = NULL,
+        .cover = NULL,
+        .coverWidth = 0,
+        .coverHeight = 0,
+        .duration = 0.0f,
+        .lyrics = NULL,
+    };
+
+    return metadata;
+}
+
+void freeLyrics(Lyrics *lyrics) {
+        if (!lyrics)
+                return;
+        for (size_t i = 0; i < lyrics->count; i++)
+                free(lyrics->lines[i].text);
+        free(lyrics->lines);
+        free(lyrics);
+}
+
+void deallocateSongData(SongData metadata) {
+    free(metadata.artist);
+    free(metadata.album);
+    free(metadata.title);
+    free(metadata.cover);
+    freeLyrics(metadata.lyrics);
+}
