@@ -48,7 +48,6 @@ GVariant* sendDBusQuery(GDBusConnection* connection, char* player, char* propert
     if (!result) {
         g_printerr("D-Bus call failed: %s\n", error->message);
         g_error_free(error);
-        g_object_unref(connection);
         return NULL;
     }
 
@@ -103,6 +102,9 @@ SongData getTrackMetadata(GDBusConnection* connection, char* player) {
                 snprintf(tempArray, 255, " %s", artist);
                 strncat(artistArray, artist, 255);
             }
+
+            output.artist = calloc(strlen(artistArray) + 1, sizeof(char));
+            snprintf(output.artist, strlen(artistArray) + 1, "%s", artistArray);
         }
         g_variant_unref(temp);
     }
@@ -121,6 +123,86 @@ SongData getTrackMetadata(GDBusConnection* connection, char* player) {
     // }
 
     g_variant_unref(value);
+
+    return output;
+}
+
+char* getCurrentPlayer(GDBusConnection* connection) {
+    GVariant *reply;
+    GVariantIter *iter;
+    GError *error = NULL;
+    const gchar *name;
+
+    char* output = NULL;
+
+    reply = g_dbus_connection_call_sync(
+        connection,
+        "org.freedesktop.DBus",
+        "/org/freedesktop/DBus",
+        "org.freedesktop.DBus",
+        "ListNames",
+        NULL,
+        G_VARIANT_TYPE("(as)"),
+        G_DBUS_CALL_FLAGS_NONE,
+        -1,
+        NULL,
+        &error
+    );
+
+    if (!reply) {
+        g_printerr("ListNames failed: %s\n", error->message);
+        g_error_free(error);
+        return NULL;
+    }
+
+    g_variant_get(reply, "(as)", &iter);
+
+    while (g_variant_iter_next(iter, "&s", &name)) {
+
+        if (!g_str_has_prefix(name, "org.mpris.MediaPlayer2."))
+            continue;
+
+        /* Query PlaybackStatus */
+        GVariant *status_reply = g_dbus_connection_call_sync(
+            connection,
+            name,
+            "/org/mpris/MediaPlayer2",
+            "org.freedesktop.DBus.Properties",
+            "Get",
+            g_variant_new("(ss)",
+                          "org.mpris.MediaPlayer2.Player",
+                          "PlaybackStatus"),
+            G_VARIANT_TYPE("(v)"),
+            G_DBUS_CALL_FLAGS_NONE,
+            -1,
+            NULL,
+            NULL
+        );
+
+        if (!status_reply)
+            continue;
+
+        GVariant *value;
+        const gchar *status;
+
+        g_variant_get(status_reply, "(v)", &value);
+        status = g_variant_get_string(value, NULL);
+
+        if (g_strcmp0(status, "Playing") == 0) {
+            output = calloc(strlen(name) - strlen(MPRIS_DESTINATION_ROOT) + 1, sizeof(char));
+            strncpy(output, name + strlen(MPRIS_DESTINATION_ROOT), strlen(name) - strlen(MPRIS_DESTINATION_ROOT));
+            printf("%s\n", output);
+            g_variant_unref(value);
+            g_variant_unref(status_reply);
+            break;
+        }
+
+        g_variant_unref(value);
+        g_variant_unref(status_reply);
+    }
+
+    g_variant_iter_free(iter);
+    g_variant_unref(reply);
 
     return output;
 }

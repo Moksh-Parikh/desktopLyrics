@@ -11,3 +11,4 @@ GDBusConnection* getPlayerDBusConnection();
 GVariant* sendDBusQuery(GDBusConnection* connection, char* player, char* propertyName);
 uint64_t getTrackPosition(GDBusConnection* connection, char* player);
 SongData getTrackMetadata(GDBusConnection* connection, char* player);
+char* getCurrentPlayer(GDBusConnection* connection);

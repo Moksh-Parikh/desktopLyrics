@@ -34,5 +34,6 @@ typedef struct {
 
 SongData initialiseSongData();
 int loadTimedLyrics(FILE *file, Lyrics *lyrics);
+Lyrics* getSyncedLyricsFromLIBLRC(SongData* songMetadata);
 void freeLyrics(Lyrics *lyrics);
 void deallocateSongData(SongData metadata);

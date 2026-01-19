@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "headers/songInfo.h"
+#include "headers/network.h"
 
 // https://codeberg.org/ravachol/kew
 // Credit to ravachol and the other kew contributors
@@ -52,6 +53,36 @@ int loadTimedLyrics(FILE *file, Lyrics *lyrics) {
 
         lyrics->isTimed = 1;
         return 1;
+}
+
+Lyrics* getSyncedLyricsFromLIBLRC(SongData* songMetadata) {
+    char* response;
+    char* request = buildAPIRequest(*songMetadata);
+    printf("%s\n", request);
+    if (request == NULL) return NULL;
+
+    response = curlRequest(request);
+    if (response == NULL) return NULL;
+    free(request);
+
+    char* syncedLyrics = jsonParser(response, "syncedLyrics");
+    free(response);
+    if (syncedLyrics == NULL) return NULL;
+
+    // in LIBLRC's response there are no actual newlines, but
+    // a '\' followed by an 'n' instead
+    char* fixedLyrics = str_replace(syncedLyrics, "\\n", "\n");
+    free(syncedLyrics);
+    if (fixedLyrics == NULL) return NULL;
+
+    FILE* lyricsAsFile = fmemopen(fixedLyrics, strlen(fixedLyrics), "r");
+
+    songMetadata->lyrics = (Lyrics *)calloc(1, sizeof(Lyrics));
+    loadTimedLyrics(lyricsAsFile, songMetadata->lyrics);
+    fclose(lyricsAsFile);
+    free(fixedLyrics);
+
+    return songMetadata->lyrics;
 }
 
 SongData initialiseSongData() {
