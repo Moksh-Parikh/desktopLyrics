@@ -7,6 +7,8 @@
 #include "headers/DBusFunctions.h"
 #include "headers/songInfo.h"
 
+#define ONE_MILLION_F 1000000.0f
+
 GDBusConnection* getPlayerDBusConnection() {
     GDBusConnection *connection;
     GError *error = NULL;
@@ -62,7 +64,7 @@ uint64_t getTrackPosition(GDBusConnection* connection, char* player) {
     uint64_t position = g_variant_get_int64(positionGVar);
 
     g_variant_unref(positionGVar);
-    return position;
+    return position / ONE_MILLION_F;
 }
 
 SongData getTrackMetadata(GDBusConnection* connection, char* player) {
@@ -112,7 +114,7 @@ SongData getTrackMetadata(GDBusConnection* connection, char* player) {
     temp = g_variant_lookup_value(value, "mpris:length", NULL);
     if (temp) {
         uint64_t length = g_variant_get_int64(temp);
-        output.duration = length / 1000000.0f; // microseconds to seconds
+        output.duration = length / ONE_MILLION_F; // microseconds to seconds
         g_variant_unref(temp);
     }
 
@@ -162,7 +164,6 @@ char* getCurrentPlayer(GDBusConnection* connection) {
         if (!g_str_has_prefix(name, "org.mpris.MediaPlayer2."))
             continue;
 
-        /* Query PlaybackStatus */
         GVariant *status_reply = g_dbus_connection_call_sync(
             connection,
             name,
@@ -188,10 +189,11 @@ char* getCurrentPlayer(GDBusConnection* connection) {
         g_variant_get(status_reply, "(v)", &value);
         status = g_variant_get_string(value, NULL);
 
-        if (g_strcmp0(status, "Playing") == 0) {
+        if (g_strcmp0(status, "Playing") == 0 ||
+            g_strcmp0(status, "Paused") == 0
+        ) {
             output = calloc(strlen(name) - strlen(MPRIS_DESTINATION_ROOT) + 1, sizeof(char));
             strncpy(output, name + strlen(MPRIS_DESTINATION_ROOT), strlen(name) - strlen(MPRIS_DESTINATION_ROOT));
-            printf("%s\n", output);
             g_variant_unref(value);
             g_variant_unref(status_reply);
             break;

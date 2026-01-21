@@ -85,6 +85,18 @@ Lyrics* getSyncedLyricsFromLIBLRC(SongData* songMetadata) {
     return songMetadata->lyrics;
 }
 
+double* generateLyricTimeArray(Lyrics* lyrics) {
+    if (lyrics == NULL || lyrics->lines == NULL) return NULL;
+
+    double* timeArray = malloc(lyrics->count * sizeof(double));
+
+    for (int i = 0; i < lyrics->count; i++) {
+        timeArray[i] = lyrics->lines[i].timestamp;
+    }
+
+    return timeArray;
+}
+
 SongData initialiseSongData() {
     SongData metadata = {
         .filePath = {0},
