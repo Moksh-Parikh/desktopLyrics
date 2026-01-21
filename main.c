@@ -8,32 +8,28 @@
 
 #define ONE_BILLION 1000000000L
 
-struct timespec generateTimeSpec(double seconds) {
-    struct timespec request;
+struct timespec nanosleepWrapper(double seconds) {
+    struct timespec request, remaining;
 
     if (seconds > 1.0f) {
         request.tv_sec = seconds - (int)seconds;
     }
 
     request.tv_nsec = (uint64_t)( ( seconds - (int)seconds ) * (double)ONE_BILLION );
+    
+    nanosleep(
+        &request,
+        &remaining
+    );
 
-    return request;
+    return remaining;
 }
 
 int findClosest(double* array, int n, double target) {
-    int result = array[0];
     int low = 0, mid, high = n - 1;
 
     while (low <= high) {
         mid = low + (high - low) / 2;
-
-        if (abs(array[mid] - target) < abs(result - target)) {
-            result = array[mid];
-        }
-        else if (abs(array[mid] - target) == abs(result - target)) {
-            // In case of a tie, the larger value is preferred
-            result = (result > array[mid]) ? result : array[mid];
-        }
 
         if (array[mid] == target) {
             return array[mid];
@@ -77,33 +73,25 @@ int main(void)
     int currentLyricLine = 0;
     
     trackPosition = getTrackPosition(DBusConnection, playerName);
-    // for (int i = 0; i < metadata.lyrics->count; i++) {
-    //     printf("%lf, %lf\n", timeArray[i], trackPosition);
-    //     if (trackPosition > (round(timeArray[i]) - 1.0f) &&
-    //         trackPosition < (round(timeArray[i]) + 1.0f)
-    //     ) {
-    //         currentLyricLine = i;
-    //         break;
-    //     }
-    // }
-
 
     currentLyricLine = findClosest(timeArray, metadata.lyrics->count, trackPosition);
     printf("%d\n", currentLyricLine);
     while (currentLyricLine < metadata.lyrics->count) {
         trackPosition = getTrackPosition(DBusConnection, playerName);
+
         if (trackPosition > (timeArray[currentLyricLine] - 0.5f) &&
-            trackPosition < (timeArray[currentLyricLine] + 1.0f)
+            trackPosition < (timeArray[currentLyricLine] + 0.5f)
         ) {
             printf("%s\n", metadata.lyrics->lines[currentLyricLine].text);
             currentLyricLine++;
         }
+        else if (trackPosition > (timeArray[currentLyricLine] + 0.5f) ) {
+            currentLyricLine = findClosest(timeArray, metadata.lyrics->count, trackPosition);
+        }
 
-        struct timespec sleepRequest = generateTimeSpec(timeArray[currentLyricLine] - timeArray[currentLyricLine - 1] - 0.25f);
-        nanosleep(
-            &sleepRequest,
-            NULL
-        );
+        nanosleepWrapper(timeArray[currentLyricLine] -
+                         timeArray[currentLyricLine - 1] - 0.25f
+                        );
     }
 
     g_object_unref(DBusConnection);
