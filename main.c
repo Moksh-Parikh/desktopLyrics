@@ -44,38 +44,30 @@ int findClosest(double* array, int n, double target) {
     return mid;
 }
 
-int main(void)
-{
-    GDBusConnection* DBusConnection = getPlayerDBusConnection();
-    if (DBusConnection == NULL) {
-        printf("DBusError\n");
-        return 1;
-    }
-
+void printLyrics(GDBusConnection* DBusConnection,
+                const gchar* senderName,
+                const gchar* objectPath,
+                const gchar* interfaceName,
+                const gchar* signalName,
+                GVariant* parameters,
+                gpointer user_data
+) {
+    double trackPosition = 0;
     char* playerName = getCurrentPlayer(DBusConnection);
-    if (playerName == NULL) {
-        printf("No players found\n");
-        g_object_unref(DBusConnection);
-        return 0;
-    }
-
-    double trackPosition = getTrackPosition(DBusConnection, playerName);
-    printf("%lf\n", trackPosition);
     SongData metadata = getTrackMetadata(DBusConnection, playerName);
 
     getSyncedLyricsFromLIBLRC(&metadata);
     if (metadata.lyrics == NULL || metadata.lyrics->lines == NULL) {
-        printf("Lyric error");
-        return 1;
+        printf("Lyric error\n");
+        return;
     }
 
     double* timeArray = generateLyricTimeArray(metadata.lyrics);
     int currentLyricLine = 0;
     
     trackPosition = getTrackPosition(DBusConnection, playerName);
-
     currentLyricLine = findClosest(timeArray, metadata.lyrics->count, trackPosition);
-    printf("%d\n", currentLyricLine);
+    
     while (currentLyricLine < metadata.lyrics->count) {
         trackPosition = getTrackPosition(DBusConnection, playerName);
 
@@ -93,10 +85,39 @@ int main(void)
                          timeArray[currentLyricLine - 1] - 0.25f
                         );
     }
-
-    g_object_unref(DBusConnection);
     deallocateSongData(metadata);
     free(playerName);
+    free(timeArray);
+}
+
+int main(void) {
+    GMainLoop *loop;
+    GDBusConnection* DBusConnection = getPlayerDBusConnection();
+    if (DBusConnection == NULL) {
+        printf("DBusError\n");
+        return 1;
+    }
+
+    printLyrics(DBusConnection, NULL,NULL,NULL,NULL,NULL,NULL);
+
+    g_dbus_connection_signal_subscribe(
+        DBusConnection,
+        NULL,   /* any sender */
+        "org.freedesktop.DBus.Properties",
+        "PropertiesChanged",
+        "/org/mpris/MediaPlayer2",
+        NULL,
+        G_DBUS_SIGNAL_FLAGS_NONE,
+        printLyrics,
+        NULL,
+        NULL
+    );
+    // printLyrics(DBusConnection, NULL, NULL, NULL, NULL, NULL, NULL);
+    loop = g_main_loop_new(NULL, FALSE);
+    g_main_loop_run(loop);
+
+    g_main_loop_unref(loop);
+    g_object_unref(DBusConnection);
 
     return 0;
 }

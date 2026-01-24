@@ -8,15 +8,16 @@
 
 // https://codeberg.org/ravachol/kew
 // Credit to ravachol and the other kew contributors
-int loadTimedLyrics(FILE *file, Lyrics *lyrics) {
+int loadTimedLyrics(char *inBuffer, Lyrics *lyrics) {
         size_t capacity = 64;
         lyrics->lines = (LyricsLine *)malloc(sizeof(LyricsLine) * capacity);
         if (!lyrics->lines)
                 return 0;
 
-        char lineBuffer[1024];
+        // char lineBuffer[1024];
+        char* lineBuffer = strtok(strdup(inBuffer), "\n");
 
-        while (fgets(lineBuffer, sizeof(lineBuffer), file))
+        while (lineBuffer)
         {
                 if (lineBuffer[0] != '[' || !isdigit((unsigned char)lineBuffer[1]))
                         continue;
@@ -49,6 +50,8 @@ int loadTimedLyrics(FILE *file, Lyrics *lyrics) {
 
                         lyrics->count++;
                 }
+
+                lineBuffer = strtok(NULL, "\n");
         }
 
         lyrics->isTimed = 1;
@@ -58,7 +61,6 @@ int loadTimedLyrics(FILE *file, Lyrics *lyrics) {
 Lyrics* getSyncedLyricsFromLIBLRC(SongData* songMetadata) {
     char* response;
     char* request = buildAPIRequest(*songMetadata);
-    printf("%s\n", request);
     if (request == NULL) return NULL;
 
     response = curlRequest(request);
@@ -74,13 +76,13 @@ Lyrics* getSyncedLyricsFromLIBLRC(SongData* songMetadata) {
     char* fixedLyrics = str_replace(syncedLyrics, "\\n", "\n");
     free(syncedLyrics);
     if (fixedLyrics == NULL) return NULL;
-
-    FILE* lyricsAsFile = fmemopen(fixedLyrics, strlen(fixedLyrics), "r");
+    char* doubleFixedLyrics = str_replace(fixedLyrics, "\\\"", "\"");
+    free(fixedLyrics);
+    if (doubleFixedLyrics == NULL) return NULL;
 
     songMetadata->lyrics = (Lyrics *)calloc(1, sizeof(Lyrics));
-    loadTimedLyrics(lyricsAsFile, songMetadata->lyrics);
-    fclose(lyricsAsFile);
-    free(fixedLyrics);
+    loadTimedLyrics(doubleFixedLyrics, songMetadata->lyrics);
+    free(doubleFixedLyrics);
 
     return songMetadata->lyrics;
 }

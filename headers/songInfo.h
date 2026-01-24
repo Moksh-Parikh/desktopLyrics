@@ -32,7 +32,7 @@ typedef struct {
         Lyrics *lyrics;
 } SongData;
 
-int loadTimedLyrics(FILE *file, Lyrics *lyrics);
+int loadTimedLyrics(char* inBuffer, Lyrics *lyrics);
 Lyrics* getSyncedLyricsFromLIBLRC(SongData* songMetadata);
 double* generateLyricTimeArray(Lyrics* lyrics);
 SongData initialiseSongData();
